@@ -1,0 +1,1786 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kopi Baud Rate Finder</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231f7ae0'/%3E%3Cg transform='translate(4 4) scale(1)' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4'/%3E%3C/g%3E%3C/svg%3E">
+<script>
+(function(){
+  var t="light";
+  try{t=localStorage.getItem("brs-theme")||"light";}catch(e){}
+  document.documentElement.setAttribute("data-theme",t==="dark"?"dark":"light");
+})();
+</script>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#e6edf5;--panel:#ffffff;--panel2:#edf2f8;--card:#f3f6fa;--input:#ffffff;
+  --line:#c6d3e2;--text:#14202e;--muted:#56677e;--accent:#1f6fd6;--accent-soft:#dde9fa;--accent-text:#ffffff;
+  --ok:#0d7f57;--ok-soft:#dbf1e6;--red:#c23434;--red-soft:#fbe3e3;--warn:#9a6400;--warn-soft:#fcefcf;--focus:#ff8a00
+}
+[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e131a;--panel:#18202a;--panel2:#222c38;--card:#1d2631;--input:#111820;
+  --line:#34424f;--text:#e8eef6;--muted:#9babbe;--accent:#5aa9ff;--accent-soft:#1c3350;--accent-text:#07111d;
+  --ok:#5fd7a3;--ok-soft:#163a2c;--red:#ff7b7b;--red-soft:#3e1d20;--warn:#ffd27a;--warn-soft:#3a2f14;--focus:#ffb454
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 "Segoe UI",system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:var(--text)}
+input,select,textarea{width:100%;min-height:32px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--input)}
+button{min-height:32px;padding:4px 12px;border:0;border-radius:6px;background:var(--panel2);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;transition:background-color .12s,color .12s,transform .08s}
+button:hover:not(:disabled){background:var(--accent-soft);color:var(--accent)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--focus);outline-offset:1px}
+button:disabled{cursor:not-allowed;opacity:.4}
+button.primary{background:var(--accent);color:var(--accent-text)}
+button.primary:hover:not(:disabled){background:var(--accent);color:var(--accent-text);filter:brightness(1.1)}
+button.danger{background:var(--red-soft);color:var(--red)}
+button.danger:hover:not(:disabled){background:var(--red);color:#fff}
+button.icon-only{width:32px;padding:0}
+.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.spacer{flex:1}
+
+/* one screen: header + views, panels scroll inside */
+.app{height:100vh;height:100dvh;max-width:1600px;margin:auto;padding:10px 12px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px}
+header{display:flex;align-items:center;gap:14px;min-width:0}
+.brand{margin:0;display:flex;align-items:center;gap:9px;font-size:1.05rem;font-weight:700;white-space:nowrap}
+.logo{width:30px;height:30px;border-radius:7px;background:var(--accent);color:var(--accent-text);display:grid;place-items:center}
+.tabs{display:flex;gap:3px;padding:3px;background:var(--panel2);border-radius:8px}
+.tab{min-height:30px;background:transparent;color:var(--muted)}
+.tab[aria-selected="true"],.tab[aria-selected="true"]:hover{background:var(--panel);color:var(--accent)}
+.head-right{margin-left:auto;display:flex;gap:6px;align-items:center}
+.badge{width:32px;height:32px;display:grid;place-items:center;border-radius:6px;color:var(--muted);flex:none}
+.badge.success{color:var(--ok);background:var(--ok-soft)}
+.badge.error{color:var(--red);background:var(--red-soft)}
+.badge.warn{color:var(--warn);background:var(--warn-soft)}
+
+.views{min-height:0}
+.view{height:100%;min-height:0;display:grid;gap:10px;animation:rise .18s ease-out}
+#viewScan{grid-template-columns:280px 350px minmax(0,1fr);grid-template-areas:"ports set run"}
+#viewConnect{grid-template-columns:360px minmax(0,1fr)}
+.a-ports{grid-area:ports}.a-set{grid-area:set}.a-run{grid-area:run}
+.col{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0;overflow:auto}
+.panel{background:var(--panel);border-radius:8px;display:flex;flex-direction:column;min-height:0;min-width:0}
+.panel.grow{flex:1}
+.panel-head{display:flex;align-items:center;gap:6px;padding:8px 10px 0 12px;min-height:40px}
+.panel-head h2{margin:0 auto 0 0;font-size:.95rem;display:flex;align-items:center;gap:7px}
+.panel-head h2 .i{color:var(--accent)}
+.panel-body{padding:10px 12px 12px;min-height:0}
+.panel-body.fill{flex:1;overflow:auto}
+
+.fields{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px 8px}
+.f{grid-column:span 3;display:grid;gap:3px;align-content:start;min-width:0;position:relative}
+.f.s2{grid-column:span 2}
+.f.s6{grid-column:1/-1}
+.lbl{font-size:.78rem;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:5px}
+.lbl .i{width:14px;height:14px}
+.row{display:flex;gap:6px;align-items:center}
+.row input,.row select{flex:1;min-width:0}
+.actions{display:flex;gap:6px;margin-top:12px}
+.actions .primary{flex:1}
+
+.seg{display:flex;gap:2px;padding:2px;background:var(--panel2);border-radius:7px}
+.seg button{flex:1;min-height:28px;padding:2px 6px;background:transparent;color:var(--muted)}
+.seg button[aria-pressed="true"],.seg button[aria-pressed="true"]:hover{background:var(--accent);color:var(--accent-text)}
+.seg button .i{width:16px;height:16px}
+.seg.inline button{flex:none;padding:2px 10px}
+
+.chip{position:relative;display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:3px 10px;border-radius:6px;background:var(--panel2);color:var(--muted);font-weight:600;cursor:pointer;user-select:none;transition:background-color .12s,color .12s}
+.chip input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.chip:has(input:checked){background:var(--accent-soft);color:var(--accent)}
+.chip:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:1px}
+.chip:has(input:disabled){opacity:.4;cursor:not-allowed}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+
+.est{display:flex;align-items:center;gap:5px;font-size:.8rem;color:var(--muted)}
+.est .i{width:15px;height:15px}
+.state{margin:0;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.86rem;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block;flex:none}
+.dot.on{background:var(--ok)}
+.dot.bad{background:var(--red)}
+.hint{margin:0;color:var(--muted);font-size:.8rem}
+.hint:empty{display:none}
+.error{color:var(--red);margin:6px 12px 0;font-size:.86rem}
+.error:empty{display:none}
+.panel-body .error{margin:8px 0 0}
+
+.port-list{display:grid;gap:6px}
+.port-card{background:var(--card);border-radius:6px;padding:7px 8px;display:grid;gap:4px;animation:rise .18s ease-out}
+.port-head{display:flex;align-items:center;gap:6px}
+.port-head input[type="checkbox"]{width:18px;min-height:18px;margin:0;accent-color:var(--accent);flex:none}
+.port-label{flex:1;min-width:0}
+.port-meta,.status-line{font-size:.76rem;color:var(--muted)}
+.progress{height:4px;background:var(--panel2);border-radius:2px;overflow:hidden}
+.progress-bar{height:100%;width:0;background:var(--accent);transition:width .15s}
+
+.empty{margin:0;height:100%;min-height:120px;display:grid;place-content:center;justify-items:center;gap:8px;color:var(--muted);text-align:center}
+.empty .i{width:44px;height:44px;stroke-width:1.5;opacity:.45}
+.results{display:grid;gap:4px;align-content:start;height:100%}
+.result{display:grid;grid-template-columns:18px minmax(60px,110px) minmax(90px,140px) minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 8px;background:var(--card);border-radius:6px;font-size:.86rem;animation:rise .18s ease-out}
+.result .ri{color:var(--muted)}
+.result.match{background:var(--ok-soft)}
+.result.match .ri{color:var(--ok)}
+.result.fail .ri{color:var(--red)}
+.result code{white-space:pre-wrap;overflow-wrap:anywhere;font-family:Consolas,monospace}
+.result button{min-height:28px;padding:2px 10px;background:var(--ok);color:#fff}
+.result button:hover:not(:disabled){background:var(--ok);color:#fff;filter:brightness(1.1)}
+
+.mon-body{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+.monitor{flex:1;min-height:120px;overflow:auto;background:var(--card);border-radius:6px;padding:8px 10px;font-family:Consolas,monospace;font-size:.84rem}
+.mline{display:grid;grid-template-columns:70px 1fr;gap:10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.mline time{color:var(--muted)}
+.mline.tx{color:var(--accent)}
+.mline.sys{color:var(--muted);font-style:italic}
+.sent-cards{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.sent-card{flex:0 0 auto;max-width:210px;min-height:30px;padding:3px 10px;background:var(--panel2);display:inline-flex;align-items:center;gap:8px;font-weight:500}
+.sent-card .cmd{font-family:Consolas,monospace;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sent-card .tag{font-size:.7rem;font-weight:700;color:var(--accent-text);background:var(--accent);border-radius:4px;padding:0 5px}
+.file-btn{flex:1;min-width:0;justify-content:flex-start}
+.file-btn span{overflow:hidden;text-overflow:ellipsis}
+.count{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:.86rem;padding:0 4px}
+.count .i{width:15px;height:15px}
+
+.hint-btn{min-height:20px;width:20px;padding:0;border-radius:50%;background:transparent;color:var(--accent)}
+.hint-btn .i{width:15px;height:15px}
+.pop{position:absolute;z-index:5;top:100%;left:0;right:0;margin-top:4px;padding:10px 12px;background:var(--panel);border-radius:8px;display:grid;gap:8px;font-size:.84rem;box-shadow:0 12px 32px rgba(10,20,35,.28)}
+.pop-row{display:flex;gap:8px;align-items:flex-start}
+.pop-row .i{color:var(--accent);margin-top:1px}
+
+.help{position:fixed;z-index:20;top:54px;right:12px;width:min(760px,calc(100vw - 24px));background:var(--panel);border-radius:10px;padding:12px 14px 14px;box-shadow:0 18px 50px rgba(10,20,35,.3);animation:rise .18s ease-out}
+.help-head{display:flex;align-items:center;margin-bottom:10px}
+.help-head h2{margin:0 auto 0 0;font-size:1rem;display:flex;align-items:center;gap:7px}
+.help-head h2 .i{color:var(--accent)}
+.guide{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.guide li{background:var(--card);border-radius:8px;padding:10px;display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center}
+.guide .gi{grid-row:span 2;width:38px;height:38px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.guide .gi .i{width:20px;height:20px}
+.guide b{font-size:.92rem}
+.guide span:last-child{font-size:.8rem;color:var(--muted)}
+.facts{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--muted)}
+.facts li{display:flex;align-items:center;gap:6px}
+.facts .i{width:16px;height:16px}
+
+.busy-dlg{border:0;border-radius:12px;background:var(--panel);color:var(--text);padding:0;max-width:420px;width:calc(100% - 32px);box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.busy-dlg::backdrop{background:rgba(10,16,26,.55)}
+.busy-dlg .busy-body{padding:20px 22px 8px;display:grid;gap:8px}
+.busy-dlg h3{margin:0;font-size:1.1rem;display:flex;gap:8px;align-items:center}
+.busy-dlg h3 .i{width:22px;height:22px;color:var(--warn)}
+.busy-dlg p{margin:0;color:var(--muted)}
+.busy-dlg .busy-port{font-weight:600;color:var(--text)}
+.busy-dlg .busy-actions{display:flex;gap:8px;justify-content:flex-end;padding:12px 22px 18px}
+
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+@media(max-width:1180px){
+  #viewScan{grid-template-columns:330px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"ports run" "set run"}
+}
+/* narrow windows stack and scroll */
+@media(max-width:860px){
+  .app{height:auto;min-height:100vh}
+  header{flex-wrap:wrap}
+  .view{height:auto}
+  #viewScan,#viewConnect{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-template-areas:"ports" "set" "run"}
+  .col{overflow:visible}
+  .results{min-height:300px}
+  .monitor{flex:none;height:320px}
+  .guide{grid-template-columns:1fr 1fr}
+}
+@media(max-width:520px){
+  .brand{font-size:.95rem}
+  .result{grid-template-columns:18px 1fr}
+  .result>*:nth-child(n+3){grid-column:2}
+  .guide{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol>
+<symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v5M12 18v.5"/></symbol>
+<symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4.5M12 18h.01"/></symbol>
+<symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4 20h16l-6-11V3"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+<symbol id="i-wand" viewBox="0 0 24 24"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8zM19 15v6M16 18h6"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></symbol>
+<symbol id="i-radio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/></symbol>
+<symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7"/></symbol>
+<symbol id="i-sort" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h5"/></symbol>
+<symbol id="i-checks" viewBox="0 0 24 24"><path d="M2 13l4 4 8-9M10 16l1 1 10-11"/></symbol>
+<symbol id="i-gauge" viewBox="0 0 24 24"><path d="M3.5 17a9 9 0 1 1 17 0M12 17l4-5"/></symbol>
+<symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8zM7.5 8.5h.01"/></symbol>
+<symbol id="i-enter" viewBox="0 0 24 24"><path d="M20 5v7a3 3 0 0 1-3 3H5M9 11l-4 4 4 4"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+<symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></symbol>
+<symbol id="i-bad" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+</defs>
+</svg>
+
+<div class="app">
+<header>
+  <h1 class="brand"><span class="logo"><svg class="i"><use href="#i-plug"/></svg></span>Kopi Baud Rate Finder</h1>
+  <nav class="tabs" role="tablist" aria-label="View">
+    <button type="button" class="tab" role="tab" id="tabScan" aria-selected="true" aria-controls="viewScan"><svg class="i"><use href="#i-search"/></svg>Scan</button>
+    <button type="button" class="tab" role="tab" id="tabConnect" aria-selected="false" aria-controls="viewConnect"><svg class="i"><use href="#i-plug"/></svg>Connect</button>
+  </nav>
+  <div class="head-right">
+    <span class="badge" id="compatibility" role="img" title="Checking browser" aria-label="Checking browser"><svg class="i"><use href="#i-clock"/></svg></span>
+    <span class="badge" role="img" title="Runs in this tab. Nothing is uploaded." aria-label="Runs in this tab. Nothing is uploaded."><svg class="i"><use href="#i-lock"/></svg></span>
+    <button type="button" class="icon-only" id="helpButton" title="Guide" aria-label="Guide" aria-expanded="false" aria-controls="helpPanel"><svg class="i"><use href="#i-help"/></svg></button>
+    <button type="button" class="icon-only" id="themeButton" title="Toggle theme" aria-label="Toggle theme"><svg class="i"><use href="#i-moon"/></svg></button>
+  </div>
+</header>
+
+<dialog id="busyDialog" class="busy-dlg" aria-labelledby="busyTitle" aria-describedby="busyText">
+  <form method="dialog" id="busyForm">
+    <div class="busy-body">
+      <h3 id="busyTitle"><svg class="i"><use href="#i-warn"/></svg>Port is busy</h3>
+      <p class="busy-port" id="busyPort"></p>
+      <p id="busyText">Close it in the other program, then Retry.</p>
+    </div>
+    <div class="busy-actions">
+      <button type="button" id="busyCancel">Cancel</button>
+      <button type="button" class="primary" id="busyRetry">Retry</button>
+    </div>
+  </form>
+</dialog>
+
+<section id="helpPanel" class="help" aria-label="Guide" hidden>
+  <div class="help-head">
+    <h2><svg class="i"><use href="#i-help"/></svg>Guide</h2>
+    <button type="button" class="icon-only" id="helpClose" title="Close" aria-label="Close guide"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
+  <ol class="guide">
+    <li><span class="gi"><svg class="i"><use href="#i-plus"/></svg></span><b>Add port</b><span>Pick it, type its COM name</span></li>
+    <li><span class="gi"><svg class="i"><use href="#i-gear"/></svg></span><b>Pick mode</b><span>Hover an icon, or use ?</span></li>
+    <li><span class="gi"><svg class="i"><use href="#i-play"/></svg></span><b>Start</b><span>Matches turn green</span></li>
+    <li><span class="gi"><svg class="i"><use href="#i-link"/></svg></span><b>Use</b><span>Copies settings to Connect</span></li>
+    <li><span class="gi"><svg class="i"><use href="#i-plug"/></svg></span><b>Connect</b><span>Or Demo without a device</span></li>
+    <li><span class="gi"><svg class="i"><use href="#i-file"/></svg></span><b>Log file</b><span>On by default; pick the file</span></li>
+  </ol>
+  <ul class="facts">
+    <li><svg class="i"><use href="#i-warn"/></svg>Busy port: close it elsewhere, Retry</li>
+    <li><svg class="i"><use href="#i-globe"/></svg>Edge or Chrome</li>
+    <li><svg class="i"><use href="#i-lock"/></svg>Nothing is uploaded</li>
+  </ul>
+</section>
+
+<main class="views">
+<section id="viewScan" class="view" role="tabpanel" aria-labelledby="tabScan">
+  <div class="panel a-ports">
+    <div class="panel-head">
+      <h2><svg class="i"><use href="#i-plug"/></svg>Ports</h2>
+      <button type="button" class="primary" id="addPortButton" title="Choose a serial port"><svg class="i"><use href="#i-plus"/></svg>Add</button>
+      <button type="button" class="icon-only" id="selectAllButton" title="Select all" aria-label="Select all"><svg class="i"><use href="#i-checks"/></svg></button>
+      <button type="button" class="icon-only" id="clearPortsButton" title="Remove all ports" aria-label="Remove all ports"><svg class="i"><use href="#i-trash"/></svg></button>
+    </div>
+    <div class="panel-body fill">
+      <div id="portList" class="port-list"></div>
+      <p id="noPorts" class="empty"><svg class="i"><use href="#i-plug"/></svg>Add a port</p>
+    </div>
+  </div>
+
+  <div class="panel a-set">
+    <div class="panel-head">
+      <h2><svg class="i"><use href="#i-gear"/></svg>Settings</h2>
+      <span class="est" title="Tries per port, worst case"><svg class="i"><use href="#i-clock"/></svg><span id="estimate"></span></span>
+    </div>
+    <div class="panel-body fill">
+      <div class="fields">
+        <div class="f">
+          <span class="lbl"><svg class="i"><use href="#i-gauge"/></svg>Baud</span>
+          <select id="scanMode" aria-label="Baud list" data-seg hidden>
+            <option value="quick" data-icon="bolt">Quick</option>
+            <option value="full" data-icon="layers">Full</option>
+          </select>
+        </div>
+        <div class="f">
+          <label class="lbl" for="timeoutSeconds"><svg class="i"><use href="#i-clock"/></svg>Timeout (s)</label>
+          <input id="timeoutSeconds" type="number" min="0.1" max="60" step="0.1" value="1">
+        </div>
+        <div class="f s2">
+          <span class="lbl">Data</span>
+          <select id="dataBits" aria-label="Data bits" data-seg hidden><option value="auto" data-icon="wand" data-short="">Auto</option><option value="8">8</option><option value="7">7</option></select>
+        </div>
+        <div class="f s2">
+          <span class="lbl">Parity</span>
+          <select id="parity" aria-label="Parity" data-seg hidden>
+            <option value="auto" data-icon="wand" data-short="">Auto</option>
+            <option value="none" data-short="N">None</option>
+            <option value="even" data-short="E">Even</option>
+            <option value="odd" data-short="O">Odd</option>
+          </select>
+        </div>
+        <div class="f s2">
+          <span class="lbl">Stop</span>
+          <select id="stopBits" aria-label="Stop bits" data-seg hidden><option value="auto" data-icon="wand" data-short="">Auto</option><option value="1">1</option><option value="2">2</option></select>
+        </div>
+        <div class="f s6">
+          <span class="lbl"><svg class="i"><use href="#i-radio"/></svg>Mode <button type="button" class="hint-btn" id="modeHelpBtn" title="What do the modes mean?" aria-label="What do the modes mean?" aria-expanded="false" aria-controls="modePop"><svg class="i"><use href="#i-help"/></svg></button></span>
+          <select id="probeMode" aria-label="Mode" data-seg hidden>
+            <option value="auto" data-icon="swap" data-short="Auto">Listen + probe</option>
+            <option value="send" data-icon="send" data-short="Probe">Probe</option>
+            <option value="listen" data-icon="radio" data-short="Listen">Listen only</option>
+          </select>
+          <div class="pop" id="modePop" role="note" hidden>
+            <div class="pop-row"><svg class="i"><use href="#i-swap"/></svg><span><b>Auto</b>: listen 0.5 s, ask only if quiet</span></div>
+            <div class="pop-row"><svg class="i"><use href="#i-send"/></svg><span><b>Probe</b>: ask at once, then listen</span></div>
+            <div class="pop-row"><svg class="i"><use href="#i-radio"/></svg><span><b>Listen</b>: sends nothing, safest</span></div>
+          </div>
+        </div>
+        <div class="f s6">
+          <label class="lbl" for="probeText" title="Command text. Escapes: \xNN"><svg class="i"><use href="#i-send"/></svg>Probe</label>
+          <div class="row">
+            <input id="probeText" type="text" spellcheck="false" value="AT">
+            <select id="probeTerm" aria-label="Terminator" title="Terminator" style="flex:0 0 96px">
+              <option value="crlf">CRLF</option>
+              <option value="cr">CR</option>
+              <option value="lf">LF</option>
+              <option value="tab">Tab</option>
+              <option value="none">None</option>
+              <option value="custom">Custom...</option>
+            </select>
+            <input id="probeTermCustom" type="text" spellcheck="false" placeholder="\x03" aria-label="Custom terminator" style="flex:0 0 70px" hidden>
+          </div>
+        </div>
+        <div class="f s6 chips">
+          <label class="chip" title="Try 8N1, 7E1, 8E1 first"><input id="commonFirst" type="checkbox" checked><svg class="i"><use href="#i-sort"/></svg>Common first</label>
+          <label class="chip" title="Keep going after the first match"><input id="showAllMatches" type="checkbox"><svg class="i"><use href="#i-checks"/></svg>All matches</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel a-run">
+    <div class="panel-head">
+      <h2 class="sr">Results</h2>
+      <button type="button" class="primary" id="startButton"><svg class="i"><use href="#i-play"/></svg>Start</button>
+      <button type="button" class="danger" id="stopButton" disabled><svg class="i"><use href="#i-stop"/></svg>Stop</button>
+      <p class="state" id="globalStatus">Idle</p>
+      <span class="spacer"></span>
+      <span class="badge warn" role="img" title="May reset the device. Close other apps on the port." aria-label="May reset the device. Close other apps on the port."><svg class="i"><use href="#i-warn"/></svg></span>
+      <button type="button" class="icon-only" id="downloadButton" disabled title="Save log" aria-label="Save log"><svg class="i"><use href="#i-save"/></svg></button>
+      <button type="button" class="icon-only" id="clearResultsButton" title="Clear results" aria-label="Clear results"><svg class="i"><use href="#i-trash"/></svg></button>
+    </div>
+    <p id="validationMessage" class="error" role="alert"></p>
+    <div class="panel-body fill">
+      <div id="results" class="results" aria-live="polite">
+        <div id="emptyResults" class="empty"><svg class="i"><use href="#i-search"/></svg>No results</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="viewConnect" class="view" role="tabpanel" aria-labelledby="tabConnect" hidden>
+  <div class="col">
+    <div class="panel">
+      <div class="panel-head"><h2><svg class="i"><use href="#i-plug"/></svg>Port</h2></div>
+      <div class="panel-body">
+        <div class="fields">
+          <div class="f s6">
+            <div class="row">
+              <select id="cnPort" aria-label="Port"></select>
+              <button type="button" class="icon-only" id="cnAddPort" title="Choose a new port" aria-label="Choose a new port"><svg class="i"><use href="#i-plus"/></svg></button>
+            </div>
+          </div>
+          <div class="f s6">
+            <label class="lbl" for="cnLabel"><svg class="i"><use href="#i-tag"/></svg>COM name</label>
+            <input id="cnLabel" type="text" placeholder="COM4" maxlength="12">
+          </div>
+          <div class="f">
+            <label class="lbl" for="cnBaud"><svg class="i"><use href="#i-gauge"/></svg>Baud</label>
+            <input id="cnBaud" type="number" min="50" max="4000000" value="9600" list="cnBaudList">
+            <datalist id="cnBaudList"><option value="1200"><option value="2400"><option value="4800"><option value="9600"><option value="19200"><option value="38400"><option value="57600"><option value="115200"><option value="230400"><option value="460800"><option value="921600"></datalist>
+          </div>
+          <div class="f">
+            <span class="lbl">Flow</span>
+            <select id="cnFlow" aria-label="Flow control" data-seg hidden><option value="none">None</option><option value="hardware" data-short="RTS">RTS/CTS</option></select>
+          </div>
+          <div class="f s2">
+            <span class="lbl">Data</span>
+            <select id="cnData" aria-label="Data bits" data-seg hidden><option value="8">8</option><option value="7">7</option></select>
+          </div>
+          <div class="f s2">
+            <span class="lbl">Parity</span>
+            <select id="cnParity" aria-label="Parity" data-seg hidden><option value="none" data-short="N">None</option><option value="even" data-short="E">Even</option><option value="odd" data-short="O">Odd</option></select>
+          </div>
+          <div class="f s2">
+            <span class="lbl">Stop</span>
+            <select id="cnStop" aria-label="Stop bits" data-seg hidden><option value="1">1</option><option value="2">2</option></select>
+          </div>
+          <div class="f s6">
+            <label class="lbl" for="cnEol"><svg class="i"><use href="#i-enter"/></svg>Line end</label>
+            <div class="row">
+              <select id="cnEol"><option value="auto">Auto</option><option value="crlf">CRLF</option><option value="cr">CR</option><option value="lf">LF</option><option value="tab">Tab</option><option value="custom">Custom...</option></select>
+              <input id="cnEolCustom" type="text" spellcheck="false" placeholder="\x03" aria-label="Custom line end" style="flex:0 0 80px" hidden>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="primary" id="cnConnect"><svg class="i"><use href="#i-link"/></svg>Connect</button>
+          <button type="button" class="danger" id="cnDisconnect" disabled title="Disconnect"><svg class="i"><use href="#i-x"/></svg>Disconnect</button>
+          <button type="button" class="icon-only" id="cnDemo" title="Demo: fake data, no hardware" aria-label="Demo: fake data, no hardware"><svg class="i"><use href="#i-flask"/></svg></button>
+        </div>
+        <p id="cnError" class="error" role="alert"></p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2><svg class="i"><use href="#i-file"/></svg>Log</h2>
+        <label class="chip" title="Write log"><input id="logOn" type="checkbox" checked><svg class="i"><use href="#i-check"/></svg>On</label>
+      </div>
+      <div class="panel-body">
+        <div class="row">
+          <button type="button" class="file-btn" id="logBrowse" title="Choose log file"><svg class="i"><use href="#i-folder"/></svg><span id="logName">Choose file</span></button>
+          <span class="count" title="Lines logged"><svg class="i"><use href="#i-list"/></svg><span id="logCount">0</span></span>
+          <button type="button" class="icon-only" id="logSaveBuf" title="Download buffer" aria-label="Download buffer" disabled><svg class="i"><use href="#i-save"/></svg></button>
+        </div>
+        <p class="hint" id="logWarn" style="margin-top:8px"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel grow">
+    <div class="panel-head">
+      <h2 class="sr">Monitor</h2>
+      <p class="state"><span class="dot" id="cnDot"></span><span id="cnStatus">Disconnected</span></p>
+      <span class="spacer"></span>
+      <div class="seg inline" role="group" aria-label="View">
+        <button type="button" id="viewText" aria-pressed="true">Text</button>
+        <button type="button" id="viewHex" aria-pressed="false">HEX</button>
+      </div>
+      <button type="button" class="icon-only" id="monClear" title="Clear monitor" aria-label="Clear monitor"><svg class="i"><use href="#i-trash"/></svg></button>
+    </div>
+    <div class="panel-body mon-body">
+      <div id="monitor" class="monitor" aria-live="off"></div>
+      <div class="sent-cards" id="sentCards" role="list" aria-label="Previously sent commands" hidden></div>
+      <div class="row">
+        <input id="sendText" type="text" placeholder="Send text" spellcheck="false">
+        <select id="sendTerm" aria-label="Terminator" title="Terminator" style="flex:0 0 100px">
+          <option value="crlf">CRLF</option><option value="cr">CR</option><option value="lf">LF</option><option value="tab">Tab</option><option value="none">None</option><option value="custom">Custom...</option>
+        </select>
+        <input id="sendTermCustom" type="text" spellcheck="false" placeholder="\x03" aria-label="Custom terminator" style="flex:0 0 70px" hidden>
+        <button type="button" class="primary icon-only" id="sendBtn" title="Send" aria-label="Send" disabled><svg class="i"><use href="#i-send"/></svg></button>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+</div>
+<script>
+(function(){
+"use strict";
+
+const QUICK_RATES=[9600,19200,38400,57600,115200,14400];
+const FULL_RATES=[110,300,600,1200,2400,4800,9600,14400,19200,38400,57600,115200,128000,230400,256000,460800,576000,921600];
+// Framing candidates [dataBits, parity, stopBits], most common first
+const FRAMES=[[8,"none",1],[7,"even",1],[8,"even",1],[8,"odd",1],[7,"odd",1],[8,"none",2],[7,"none",1],[7,"even",2],[7,"odd",2],[8,"even",2],[8,"odd",2],[7,"none",2]];
+const COMMON_FRAMES=3; // first 3 entries of FRAMES: 8N1, 7E1, 8E1
+const AUTO_LISTEN_MS=500;
+const MAX_REPEAT_ERRORS=4;
+const MAX_LINES=2000;
+
+const $=function(id){return document.getElementById(id);};
+const el={
+  compatibility:$("compatibility"),
+  theme:$("themeButton"),
+  globalStatus:$("globalStatus"),
+  addPort:$("addPortButton"),
+  selectAll:$("selectAllButton"),
+  clearPorts:$("clearPortsButton"),
+  portList:$("portList"),
+  noPorts:$("noPorts"),
+  scanMode:$("scanMode"),
+  timeout:$("timeoutSeconds"),
+  dataBits:$("dataBits"),
+  stopBits:$("stopBits"),
+  parity:$("parity"),
+  probe:$("probeText"),
+  probeMode:$("probeMode"),
+  commonFirst:$("commonFirst"),
+  showAll:$("showAllMatches"),
+  estimate:$("estimate"),
+  start:$("startButton"),
+  stop:$("stopButton"),
+  download:$("downloadButton"),
+  clearResults:$("clearResultsButton"),
+  validation:$("validationMessage"),
+  results:$("results")
+};
+
+let ports=[];          // shared by Scan and Connect: {port,label,selected,status,card}
+let running=false;
+let stopRequested=false;
+let activePort=null;
+let activeReader=null;
+let logs=[];
+let connected=null;    // Connect owner: {item, port, reader, ...} (null when idle)
+
+/* ---------- theme ---------- */
+function applyTheme(theme){
+  document.documentElement.setAttribute("data-theme",theme);
+  el.theme.innerHTML='<svg class="i"><use href="#i-'+(theme==="dark"?"sun":"moon")+'"/></svg>';
+  try{localStorage.setItem("brs-theme",theme);}catch(_){}
+}
+el.theme.addEventListener("click",function(){
+  const now=document.documentElement.getAttribute("data-theme")==="dark"?"dark":"light";
+  applyTheme(now==="dark"?"light":"dark");
+});
+applyTheme(document.documentElement.getAttribute("data-theme")==="dark"?"dark":"light");
+
+/* ---------- help ---------- */
+const helpPanel=$("helpPanel"),helpBtn=$("helpButton");
+function setHelp(open){
+  helpPanel.hidden=!open;
+  helpBtn.setAttribute("aria-expanded",String(open));
+}
+helpBtn.addEventListener("click",function(){setHelp(helpPanel.hidden);});
+$("helpClose").addEventListener("click",function(){setHelp(false);helpBtn.focus();});
+document.addEventListener("click",function(e){
+  if(!helpPanel.hidden&&!helpPanel.contains(e.target)&&!helpBtn.contains(e.target))setHelp(false);
+});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!helpPanel.hidden){setHelp(false);helpBtn.focus();}});
+
+/* ---------- tabs ---------- */
+function showTab(name){
+  const scan=name!=="connect";
+  $("viewScan").hidden=!scan;
+  $("viewConnect").hidden=scan;
+  $("tabScan").setAttribute("aria-selected",String(scan));
+  $("tabConnect").setAttribute("aria-selected",String(!scan));
+  if(!scan)refreshConnectPorts();
+  try{localStorage.setItem("brs-tab",name);}catch(_){}
+}
+$("tabScan").addEventListener("click",function(){showTab("scan");});
+$("tabConnect").addEventListener("click",function(){showTab("connect");});
+
+/* ---------- helpers ---------- */
+function hex4(value){
+  return value ? value.toString(16).toUpperCase().padStart(4,"0") : "----";
+}
+function portMeta(port){
+  const info=port.getInfo ? port.getInfo() : {};
+  return "USB "+hex4(info.usbVendorId)+":"+hex4(info.usbProductId);
+}
+function portName(item){
+  return item.label ? item.label : portMeta(item.port);
+}
+function escapeHtml(value){
+  return String(value).replace(/[&<>"']/g,function(char){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char];
+  });
+}
+function pad(n,w){return String(n).padStart(w||2,"0");}
+function stamp(d,ms){
+  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds())+(ms?"."+pad(d.getMilliseconds(),3):"");
+}
+function frameLabel(f){
+  return f.dataBits+f.parity.charAt(0).toUpperCase()+f.stopBits;
+}
+function buildFrames(){
+  const d=el.dataBits.value,p=el.parity.value,s=el.stopBits.value;
+  return FRAMES.filter(function(f){
+    return (d==="auto"||Number(d)===f[0])&&(p==="auto"||p===f[1])&&(s==="auto"||Number(s)===f[2]);
+  }).map(function(f){return {dataBits:f[0],parity:f[1],stopBits:f[2]};});
+}
+function currentRates(){
+  return el.scanMode.value==="full" ? FULL_RATES.slice() : QUICK_RATES.slice();
+}
+function buildAttempts(){
+  const attempts=[];
+  const rates=currentRates();
+  const frames=buildFrames();
+  function add(list){
+    list.forEach(function(frame){
+      rates.forEach(function(rate){attempts.push({rate:rate,frame:frame});});
+    });
+  }
+  if(el.commonFirst.checked&&frames.length>COMMON_FRAMES){
+    const common=frames.filter(function(f){return FRAMES.slice(0,COMMON_FRAMES).some(function(c){return c[0]===f.dataBits&&c[1]===f.parity&&c[2]===f.stopBits;});});
+    const rest=frames.filter(function(f){return common.indexOf(f)<0;});
+    // round 1: common frames at every baud, round 2: the rest
+    add(common);
+    add(rest);
+  }else{
+    add(frames);
+  }
+  return attempts;
+}
+function updateEstimate(){
+  const count=buildAttempts().length;
+  const timeout=Number(el.timeout.value);
+  let text=count+" tries";
+  if(Number.isFinite(timeout)&&timeout>0){
+    const secs=Math.round(count*timeout);
+    text+=" · "+(secs>=120?Math.round(secs/60)+" min":secs+" s");
+  }
+  el.estimate.textContent=text;
+}
+function parseProbe(value){
+  return value
+    .replace(/\\x([0-9a-fA-F]{2})/g,function(_,hex){return String.fromCharCode(parseInt(hex,16));})
+    .replace(/\\r/g,"\r")
+    .replace(/\\n/g,"\n")
+    .replace(/\\t/g,"\t")
+    .replace(/\\\\/g,"\\");
+}
+
+/* ---------- terminators (shared by probe and send) ---------- */
+const TERMS={none:"",cr:"\r",lf:"\n",crlf:"\r\n",tab:"\t"};
+function termText(sel,customEl){
+  if(sel==="custom")return parseProbe(customEl.value||"");
+  return Object.prototype.hasOwnProperty.call(TERMS,sel)?TERMS[sel]:"";
+}
+function bindTerm(selEl,customEl){
+  function sync(){customEl.hidden=selEl.value!=="custom";}
+  selEl.addEventListener("change",sync);
+  sync();
+}
+/* move an old probe such as AT\r\n into command + terminator */
+function splitOldTerm(value,selEl){
+  const m=/^(.*?)((?:\\r\\n)|(?:\\r)|(?:\\n)|(?:\\t))$/.exec(value);
+  if(!m)return value;
+  selEl.value=m[2]==="\\r\\n"?"crlf":m[2]==="\\r"?"cr":m[2]==="\\n"?"lf":"tab";
+  return m[1];
+}
+function probeBytes(){
+  return parseProbe(el.probe.value)+termText($("probeTerm").value,$("probeTermCustom"));
+}
+bindTerm($("probeTerm"),$("probeTermCustom"));
+
+/* ---------- mode hint popover ---------- */
+(function(){
+  const btn=$("modeHelpBtn"),pop=$("modePop");
+  function setOpen(open){
+    pop.hidden=!open;
+    btn.setAttribute("aria-expanded",String(open));
+  }
+  btn.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();setOpen(pop.hidden);});
+  document.addEventListener("click",function(e){
+    if(!pop.hidden&&!pop.contains(e.target)&&e.target!==btn&&!btn.contains(e.target))setOpen(false);
+  });
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!pop.hidden){setOpen(false);btn.focus();}});
+})();
+
+/* ---------- ports (shared) ---------- */
+function renderPorts(){
+  el.portList.innerHTML="";
+  el.noPorts.hidden=ports.length>0;
+
+  ports.forEach(function(item,index){
+    const card=document.createElement("div");
+    card.className="port-card";
+    card.innerHTML=
+      '<div class="port-head">'+
+      '<input type="checkbox" class="port-check" aria-label="Select port" '+(item.selected?"checked":"")+'>'+
+      '<input type="text" class="port-label" value="'+escapeHtml(item.label||"")+'" placeholder="Type COM name" aria-label="Windows COM name">'+
+      '<button type="button" class="icon-only remove-port" title="Remove" aria-label="Remove port"><svg class="i"><use href="#i-x"/></svg></button>'+
+      '</div>'+
+      '<div class="port-meta">'+escapeHtml(portMeta(item.port))+'</div>'+
+      '<div class="progress"><div class="progress-bar"></div></div>'+
+      '<div class="status-line">'+escapeHtml(item.status||"Ready")+'</div>';
+
+    card.querySelector(".port-check").addEventListener("change",function(event){
+      item.selected=event.target.checked;
+      updateControls();
+    });
+    card.querySelector(".port-label").addEventListener("input",function(event){
+      item.label=event.target.value.trim().toUpperCase();
+      refreshConnectPorts(true);
+    });
+    card.querySelector(".remove-port").addEventListener("click",function(){
+      if(running||(connected&&connected.item===item))return;
+      ports.splice(index,1);
+      renderPorts();
+      refreshConnectPorts();
+    });
+    item.card=card;
+    el.portList.appendChild(card);
+  });
+
+  updateControls();
+}
+
+function updatePort(item,status,percent){
+  item.status=status;
+  if(item.card){
+    item.card.querySelector(".status-line").textContent=status;
+    item.card.querySelector(".progress-bar").style.width=Math.max(0,Math.min(100,percent||0))+"%";
+  }
+}
+
+function updateControls(){
+  const supported="serial" in navigator;
+  const selected=ports.some(function(item){return item.selected;});
+  const busy=!!connected;
+  el.addPort.disabled=running||!supported;
+  el.selectAll.disabled=running||ports.length===0;
+  el.clearPorts.disabled=running||busy||ports.length===0;
+  el.start.disabled=running||busy||!supported||!selected;
+  el.stop.disabled=!running;
+  el.download.disabled=logs.length===0;
+  [el.scanMode,el.timeout,el.dataBits,el.stopBits,el.parity,el.probe,el.probeMode,el.commonFirst,el.showAll,$("probeTerm"),$("probeTermCustom")]
+    .forEach(function(control){control.disabled=running;});
+}
+
+/* ---------- results ---------- */
+function addResult(name,detail,state,message,item,attempt){
+  const empty=$("emptyResults");
+  if(empty)empty.remove();
+
+  const row=document.createElement("div");
+  row.className="result "+state;
+  row.innerHTML=
+    '<svg class="i ri"><use href="#i-'+(state==="match"?"ok":state==="fail"?"bad":"info")+'"/></svg>'+
+    "<strong>"+escapeHtml(name)+"</strong>"+
+    "<span>"+escapeHtml(detail||"-")+"</span>"+
+    "<code>"+escapeHtml(message)+"</code>"+
+    (state==="match"&&attempt?'<button type="button" class="use-btn" title="Use on Connect"><svg class="i"><use href="#i-link"/></svg>Use</button>':"<span></span>");
+  const useBtn=row.querySelector(".use-btn");
+  if(useBtn){
+    useBtn.addEventListener("click",function(){useSetting(item,attempt);});
+  }
+  el.results.appendChild(row);
+  el.results.scrollTop=el.results.scrollHeight;
+
+  logs.push(new Date().toISOString()+" | "+name+" | "+(detail||"-")+" | "+(state||"info").toUpperCase()+" | "+message);
+  updateControls();
+}
+
+function printableResponse(text){
+  return /[\x20-\x7E]/.test(text);
+}
+function visibleResponse(text){
+  return text
+    .replace(/\r/g,"\\r")
+    .replace(/\n/g,"\\n")
+    .replace(/\t/g,"\\t")
+    .replace(/[^\x20-\x7E\\]/g,function(char){
+      return "\\x"+char.charCodeAt(0).toString(16).padStart(2,"0");
+    });
+}
+
+function validate(){
+  el.validation.textContent="";
+  if(connected){
+    el.validation.textContent="Disconnect on the Connect tab first.";
+    return null;
+  }
+  const timeout=Number(el.timeout.value);
+  if(!Number.isFinite(timeout)||timeout<0.1||timeout>60){
+    el.validation.textContent="Timeout must be 0.1 to 60 seconds.";
+    return null;
+  }
+  const selected=ports.filter(function(item){return item.selected;});
+  if(selected.length===0){
+    el.validation.textContent="Select at least one port.";
+    return null;
+  }
+  const unnamed=selected.filter(function(item){return !item.label;});
+  if(unnamed.length>0){
+    el.validation.textContent="Type a COM name for each selected port.";
+    return null;
+  }
+  const attempts=buildAttempts();
+  if(attempts.length===0){
+    el.validation.textContent="No valid serial settings.";
+    return null;
+  }
+  return {
+    timeoutMs:Math.round(timeout*1000),
+    attempts:attempts,
+    probe:probeBytes(),
+    mode:el.probeMode.value,
+    showAll:el.showAll.checked,
+    selected:selected
+  };
+}
+
+/* ---------- scan serial ---------- */
+async function safeClose(port){
+  if(activeReader){
+    try{await activeReader.cancel();}catch(_){}
+    try{activeReader.releaseLock();}catch(_){}
+    activeReader=null;
+  }
+  if(port){
+    try{await port.close();}catch(_){}
+  }
+  activePort=null;
+}
+
+function isBusyError(error){
+  const name=error&&error.name?error.name:"";
+  const msg=((error&&error.message)||String(error)).toLowerCase();
+  return name==="InvalidStateError"||name==="NetworkError"||msg.indexOf("failed to open")>=0||msg.indexOf("access is denied")>=0||msg.indexOf("busy")>=0||msg.indexOf("in use")>=0;
+}
+
+function askPortBusy(item){
+  return new Promise(function(resolve){
+    const dlg=document.getElementById("busyDialog");
+    if(!dlg||typeof dlg.showModal!=="function"){resolve(false);return;}
+    const retry=document.getElementById("busyRetry");
+    const cancel=document.getElementById("busyCancel");
+    document.getElementById("busyPort").textContent=portName(item);
+    let done=false;
+    function finish(value){
+      if(done)return;
+      done=true;
+      retry.removeEventListener("click",onRetry);
+      cancel.removeEventListener("click",onCancel);
+      dlg.removeEventListener("cancel",onCancel);
+      if(dlg.open)dlg.close();
+      resolve(value);
+    }
+    function onRetry(){finish(true);}
+    function onCancel(e){if(e&&e.preventDefault)e.preventDefault();finish(false);}
+    retry.addEventListener("click",onRetry);
+    cancel.addEventListener("click",onCancel);
+    dlg.addEventListener("cancel",onCancel);
+    dlg.showModal();
+    retry.focus();
+  });
+}
+
+window.__busyTest=false;
+
+async function testAttempt(port,attempt,config){
+  let writer=null;
+  let timer=null;
+  let timedOut=false;
+  let received="";
+
+  try{
+    await port.open({
+      baudRate:attempt.rate,
+      dataBits:attempt.frame.dataBits,
+      stopBits:attempt.frame.stopBits,
+      parity:attempt.frame.parity,
+      flowControl:"none"
+    });
+    activePort=port;
+
+    if(!port.readable){
+      return {match:false,text:"Port has no readable stream."};
+    }
+
+    const mode=config.mode||"send";
+    // Listen only never writes. Send writes at once. Auto writes only after a quiet listen window.
+    let probePending=(mode==="send"||mode==="auto")&&config.probe.length>0;
+    let probeSent=false;
+    async function sendProbe(){
+      if(probeSent||!probePending||!port.writable)return;
+      probeSent=true;
+      writer=port.writable.getWriter();
+      await writer.write(new TextEncoder().encode(config.probe));
+      writer.releaseLock();
+      writer=null;
+    }
+
+    activeReader=port.readable.getReader();
+    timer=setTimeout(function(){
+      timedOut=true;
+      if(activeReader)activeReader.cancel().catch(function(){});
+    },config.timeoutMs);
+
+    let autoTimer=null;
+    if(mode==="send"){
+      await sendProbe();
+    }else if(mode==="auto"&&probePending){
+      const listenMs=Math.min(AUTO_LISTEN_MS,Math.max(50,Math.round(config.timeoutMs/2)));
+      autoTimer=setTimeout(function(){
+        if(!received.length&&!stopRequested&&!timedOut){sendProbe().catch(function(){});}
+      },listenMs);
+    }
+
+    try{
+      while(!stopRequested&&!timedOut){
+        const result=await activeReader.read();
+        if(result.value&&result.value.length){
+          received+=new TextDecoder().decode(result.value,{stream:true});
+          // early exit: printable text that ends with CR or LF is a complete line
+          if(printableResponse(received)&&/[\r\n]/.test(received))break;
+        }
+        if(result.done)break;
+      }
+    }finally{
+      if(autoTimer)clearTimeout(autoTimer);
+    }
+
+    return {match:printableResponse(received),text:visibleResponse(received)};
+  }finally{
+    if(timer)clearTimeout(timer);
+    if(writer){
+      try{writer.releaseLock();}catch(_){}
+    }
+    await safeClose(port);
+  }
+}
+
+async function scanPort(item,index,total,config){
+  const name=portName(item);
+  const count=config.attempts.length;
+  let matches=0;
+  let lastMessage="";
+  let repeats=0;
+
+  updatePort(item,"Scanning...",0);
+  addResult(name,"","","Scan "+index+" of "+total+" started.");
+
+  for(let i=0;i<count;i++){
+    if(stopRequested)break;
+
+    const attempt=config.attempts[i];
+    const label=attempt.rate+" baud "+frameLabel(attempt.frame);
+    updatePort(item,"Testing "+label,Math.round((i/count)*100));
+    el.globalStatus.textContent=name+": "+label;
+
+    try{
+      const response=await testAttempt(item.port,attempt,config);
+      repeats=0;
+      lastMessage="";
+      if(response.match){
+        matches++;
+        addResult(name,label,"match",response.text||"Printable response.",item,attempt);
+        if(!config.showAll)break;
+      }
+    }catch(error){
+      await safeClose(item.port);
+      if(isBusyError(error)&&!stopRequested){
+        const again=await askPortBusy(item);
+        if(again){i--;continue;}
+        addResult(name,"","fail","Port is busy. Skipped.");
+        break;
+      }
+      const message=error&&error.message?error.message:String(error);
+      if(message===lastMessage){
+        repeats++;
+      }else{
+        repeats=1;
+        lastMessage=message;
+        addResult(name,label,"fail",message);
+      }
+      if(repeats>=MAX_REPEAT_ERRORS){
+        addResult(name,"","fail","Same error "+repeats+" times. Skipping this port.");
+        break;
+      }
+    }
+  }
+
+  if(stopRequested){
+    updatePort(item,"Stopped",0);
+  }else if(matches){
+    updatePort(item,matches+" match"+(matches===1?"":"es")+" found",100);
+  }else{
+    updatePort(item,"No match",100);
+    addResult(name,"","fail","No responsive setting found.");
+  }
+}
+
+async function startScan(){
+  const config=validate();
+  if(!config)return;
+
+  running=true;
+  stopRequested=false;
+  updateControls();
+  el.globalStatus.textContent="Scanning...";
+
+  try{
+    for(let index=0;index<config.selected.length;index++){
+      if(stopRequested)break;
+      try{
+        await scanPort(config.selected[index],index+1,config.selected.length,config);
+      }catch(error){
+        addResult(portName(config.selected[index]),"","fail",error&&error.message?error.message:String(error));
+      }
+    }
+  }finally{
+    await safeClose(activePort);
+    running=false;
+    el.globalStatus.textContent=stopRequested?"Stopped":"Done";
+    stopRequested=false;
+    updateControls();
+  }
+}
+
+async function stopScan(){
+  if(!running)return;
+  stopRequested=true;
+  el.globalStatus.textContent="Stopping...";
+  el.stop.disabled=true;
+  if(activeReader){
+    try{await activeReader.cancel();}catch(_){}
+  }
+}
+
+/* ---------- scan events ---------- */
+async function addPortFlow(){
+  el.validation.textContent="";
+  try{
+    const port=await navigator.serial.requestPort();
+    let item=ports.find(function(candidate){return candidate.port===port;});
+    if(!item){
+      item={port:port,label:"",selected:true,status:"Ready. Type its COM name.",card:null};
+      ports.push(item);
+      renderPorts();
+      refreshConnectPorts();
+    }else{
+      el.validation.textContent="Port already added.";
+    }
+    return item;
+  }catch(error){
+    if(error&&error.name!=="NotFoundError"){
+      el.validation.textContent=error.message||String(error);
+    }
+    return null;
+  }
+}
+el.addPort.addEventListener("click",addPortFlow);
+
+el.selectAll.addEventListener("click",function(){
+  const allSelected=ports.every(function(item){return item.selected;});
+  ports.forEach(function(item){item.selected=!allSelected;});
+  renderPorts();
+});
+
+el.clearPorts.addEventListener("click",function(){
+  if(running||connected)return;
+  ports=[];
+  renderPorts();
+  refreshConnectPorts();
+});
+
+el.start.addEventListener("click",startScan);
+el.stop.addEventListener("click",stopScan);
+
+el.clearResults.addEventListener("click",function(){
+  logs=[];
+  el.results.innerHTML='<div id="emptyResults" class="empty"><svg class="i"><use href="#i-search"/></svg>No results</div>';
+  updateControls();
+});
+
+function downloadText(text,name){
+  const blob=new Blob([text],{type:"text/plain"});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url;
+  link.download=name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+
+el.download.addEventListener("click",function(){
+  if(!logs.length)return;
+  downloadText(logs.join("\r\n")+"\r\n","baud-rate-scan-"+new Date().toISOString().replace(/[:.]/g,"-")+".txt");
+});
+
+[el.scanMode,el.timeout,el.dataBits,el.parity,el.stopBits,el.probeMode,el.commonFirst].forEach(function(control){
+  control.addEventListener("input",updateEstimate);
+  control.addEventListener("change",updateEstimate);
+});
+
+/* ================= CONNECT ================= */
+const cn={
+  port:$("cnPort"),label:$("cnLabel"),baud:$("cnBaud"),data:$("cnData"),parity:$("cnParity"),
+  stop:$("cnStop"),flow:$("cnFlow"),eol:$("cnEol"),eolCustom:$("cnEolCustom"),
+  connect:$("cnConnect"),disconnect:$("cnDisconnect"),demo:$("cnDemo"),addPort:$("cnAddPort"),
+  dot:$("cnDot"),status:$("cnStatus"),error:$("cnError"),
+  monitor:$("monitor"),viewText:$("viewText"),viewHex:$("viewHex"),monClear:$("monClear"),
+  sendText:$("sendText"),sendBtn:$("sendBtn"),sendTerm:$("sendTerm"),sendTermCustom:$("sendTermCustom"),
+  sentCards:$("sentCards"),
+  logOn:$("logOn"),logBrowse:$("logBrowse"),logSaveBuf:$("logSaveBuf"),
+  logName:$("logName"),logCount:$("logCount"),logWarn:$("logWarn")
+};
+
+let hexView=false;
+let demoTimer=null;
+let session=0;
+
+/* ---- settings persistence ---- */
+const SKEY="brs-connect";
+function saveSettings(){
+  try{
+    localStorage.setItem(SKEY,JSON.stringify({
+      baud:cn.baud.value,data:cn.data.value,parity:cn.parity.value,stop:cn.stop.value,flow:cn.flow.value,
+      eol:cn.eol.value,eolCustom:cn.eolCustom.value,sendTerm:cn.sendTerm.value,sendTermCustom:cn.sendTermCustom.value,
+      probe:el.probe.value,probeTerm:$("probeTerm").value,probeTermCustom:$("probeTermCustom").value,probeMode:el.probeMode.value,
+      hex:hexView
+    }));
+  }catch(_){}
+}
+function loadSettings(){
+  try{
+    const s=JSON.parse(localStorage.getItem(SKEY)||"null");
+    if(!s)return;
+    if(s.baud)cn.baud.value=s.baud;
+    if(s.data)cn.data.value=s.data;
+    if(s.parity)cn.parity.value=s.parity;
+    if(s.stop)cn.stop.value=s.stop;
+    if(s.flow)cn.flow.value=s.flow;
+    if(s.eol)cn.eol.value=s.eol;
+    cn.eolCustom.value=s.eolCustom||"";
+    if(s.sendTerm)cn.sendTerm.value=s.sendTerm;
+    cn.sendTermCustom.value=s.sendTermCustom||"";
+    if(typeof s.probe==="string"){
+      el.probe.value=splitOldTerm(s.probe,$("probeTerm"));
+      if(s.probeTerm&&s.probe===el.probe.value)$("probeTerm").value=s.probeTerm;
+    }
+    $("probeTermCustom").value=s.probeTermCustom||"";
+    if(s.probeMode&&el.probeMode.querySelector('option[value="'+s.probeMode+'"]'))el.probeMode.value=s.probeMode;
+    setHex(!!s.hex);
+  }catch(_){}
+}
+[cn.baud,cn.data,cn.parity,cn.stop,cn.flow,cn.eol,cn.eolCustom,cn.sendTerm,cn.sendTermCustom,
+
+ el.probe,$("probeTerm"),$("probeTermCustom"),el.probeMode].forEach(function(c){
+  c.addEventListener("change",saveSettings);
+});
+bindTerm(cn.eol,cn.eolCustom);
+bindTerm(cn.sendTerm,cn.sendTermCustom);
+
+/* ---- port picker ---- */
+function refreshConnectPorts(keep){
+  const prev=cn.port.value;
+  cn.port.innerHTML="";
+  if(ports.length===0){
+    const o=document.createElement("option");
+    o.value="";o.textContent="-";
+    cn.port.appendChild(o);
+  }
+  ports.forEach(function(item,i){
+    const o=document.createElement("option");
+    o.value=String(i);
+    o.textContent=(item.label||"(no name)")+" - "+portMeta(item.port);
+    cn.port.appendChild(o);
+  });
+  if(prev!==""&&ports[Number(prev)])cn.port.value=prev;
+  else if(connected)cn.port.value=String(ports.indexOf(connected.item));
+  syncLabelField();
+  updateConnectControls();
+}
+function selectedItem(){
+  return ports[Number(cn.port.value)]||null;
+}
+function syncLabelField(){
+  const item=selectedItem();
+  if(document.activeElement!==cn.label)cn.label.value=item?(item.label||""):"";
+  cn.label.disabled=!item;
+}
+cn.port.addEventListener("change",function(){syncLabelField();updateConnectControls();});
+cn.label.addEventListener("input",function(){
+  const item=selectedItem();
+  if(!item)return;
+  item.label=cn.label.value.trim().toUpperCase();
+  if(item.card){
+    const f=item.card.querySelector(".port-label");
+    if(f)f.value=item.label;
+  }
+  const opt=cn.port.options[cn.port.selectedIndex];
+  if(opt)opt.textContent=(item.label||"(no name)")+" - "+portMeta(item.port);
+  saveSettings();
+});
+cn.addPort.addEventListener("click",async function(){
+  if(!("serial" in navigator))return;
+  const before=ports.length;
+  const item=await addPortFlow();
+  if(item){
+    el.validation.textContent="";
+    cn.error.textContent="";
+    refreshConnectPorts();
+    cn.port.value=String(ports.indexOf(item));
+    syncLabelField();
+    updateConnectControls();
+  }else if(ports.length===before&&el.validation.textContent){
+    cn.error.textContent=el.validation.textContent;
+  }
+});
+
+function setStatus(text,state){
+  cn.status.textContent=text;
+  cn.dot.className="dot"+(state==="on"?" on":state==="bad"?" bad":"");
+}
+function updateConnectControls(){
+  const supported="serial" in navigator;
+  const live=!!connected||!!demoTimer;
+  cn.connect.disabled=live||!supported||!selectedItem()||running;
+  cn.disconnect.disabled=!live;
+  cn.demo.disabled=live;
+  cn.sendBtn.disabled=!connected;
+  [cn.port,cn.baud,cn.data,cn.parity,cn.stop,cn.flow,cn.addPort].forEach(function(c){c.disabled=live;});
+  cn.label.disabled=live||!selectedItem();
+  updateControls();
+}
+
+/* ---- monitor ---- */
+function addMonLine(box,time,text,cls){
+  const row=document.createElement("div");
+  row.className="mline"+(cls?" "+cls:"");
+  const t=document.createElement("time");
+  t.textContent=time;
+  const s=document.createElement("span");
+  s.textContent=text;
+  row.appendChild(t);row.appendChild(s);
+  box.appendChild(row);
+  while(box.childNodes.length>MAX_LINES)box.removeChild(box.firstChild);
+  box.scrollTop=box.scrollHeight;
+}
+function hexOf(bytes){
+  return Array.prototype.map.call(bytes,function(b){return b.toString(16).toUpperCase().padStart(2,"0");}).join(" ");
+}
+function setHex(on){
+  hexView=on;
+  cn.viewText.setAttribute("aria-pressed",String(!on));
+  cn.viewHex.setAttribute("aria-pressed",String(on));
+}
+cn.viewText.addEventListener("click",function(){setHex(false);saveSettings();});
+cn.viewHex.addEventListener("click",function(){setHex(true);saveSettings();});
+cn.monClear.addEventListener("click",function(){cn.monitor.innerHTML="";});
+
+/* ---- line splitter ---- */
+function makeSplitter(onLine){
+  let buf="";
+  let bytes=[];
+  let timer=null;
+  const dec=new TextDecoder("utf-8");
+  function emit(text,raw){
+    onLine(text,raw);
+  }
+  function flush(){
+    if(buf.length>0||bytes.length>0){
+      emit(buf,bytes);
+      buf="";bytes=[];
+    }
+  }
+  return {
+    push:function(chunk){
+      if(timer){clearTimeout(timer);timer=null;}
+      const eol=cn.eol.value;
+      const marker=eol==="tab"?"\t":eol==="custom"?parseProbe(cn.eolCustom.value||""):"";
+      const text=dec.decode(chunk,{stream:true});
+      for(let k=0;k<chunk.length;k++)bytes.push(chunk[k]);
+      for(let i=0;i<text.length;i++){
+        const ch=text[i];
+        const isCr=ch==="\r",isLf=ch==="\n";
+        let end=false;
+        let markerHit=false;
+        if(eol==="cr")end=isCr;
+        else if(eol==="lf")end=isLf;
+        else if(eol==="crlf")end=isLf;
+        else if(eol==="tab"||eol==="custom"){
+          if(marker){
+            buf+=ch;
+            if(buf.endsWith(marker)){end=true;markerHit=true;buf=buf.slice(0,buf.length-marker.length);}
+            else continue;
+          }else end=isCr||isLf;
+        }
+        else end=isCr||isLf;
+        if(end){
+          if(markerHit){emit(buf,bytes);buf="";bytes=[];continue;}
+          let line=buf;
+          if(eol==="crlf"&&line.endsWith("\r"))line=line.slice(0,-1);
+          // skip empty line created by CRLF in auto mode
+          if(eol==="auto"&&line===""&&isLf){buf="";bytes=[];continue;}
+          emit(line,bytes);
+          buf="";bytes=[];
+        }else{
+          buf+=ch;
+        }
+      }
+      if(buf.length>8192)flush();
+      if(buf.length>0)timer=setTimeout(flush,400);
+    },
+    flush:flush
+  };
+}
+
+/* ---- log file ---- */
+const logState={handle:null,writer:null,buffer:[],count:0,failed:false,writing:false,timer:null,memory:[]};
+const IDB_NAME="brs-db",IDB_STORE="handles";
+function idb(){
+  return new Promise(function(res,rej){
+    if(!window.indexedDB){rej(new Error("no idb"));return;}
+    const r=indexedDB.open(IDB_NAME,1);
+    r.onupgradeneeded=function(){r.result.createObjectStore(IDB_STORE);};
+    r.onsuccess=function(){res(r.result);};
+    r.onerror=function(){rej(r.error);};
+  });
+}
+async function idbSet(key,val){
+  try{const db=await idb();db.transaction(IDB_STORE,"readwrite").objectStore(IDB_STORE).put(val,key);}catch(_){}
+}
+async function idbGet(key){
+  try{
+    const db=await idb();
+    return await new Promise(function(res){
+      const r=db.transaction(IDB_STORE).objectStore(IDB_STORE).get(key);
+      r.onsuccess=function(){res(r.result);};
+      r.onerror=function(){res(null);};
+    });
+  }catch(_){return null;}
+}
+function logStatus(){
+  cn.logName.textContent=logState.handle?logState.handle.name:"Choose file";
+  cn.logCount.textContent=String(logState.count);
+  cn.logSaveBuf.disabled=logState.memory.length===0;
+  if(!("showSaveFilePicker" in window)){
+    cn.logWarn.textContent="File picker not supported here. Log downloads on Disconnect.";
+  }else if(logState.failed){
+    cn.logWarn.textContent="Write failed. Lines kept in memory: pick a file or download.";
+    cn.logWarn.style.color="var(--red)";
+  }else{
+    cn.logWarn.textContent="";
+    cn.logWarn.style.color="";
+  }
+}
+async function ensureWritePermission(handle){
+  try{
+    const opts={mode:"readwrite"};
+    if((await handle.queryPermission(opts))==="granted")return true;
+    return (await handle.requestPermission(opts))==="granted";
+  }catch(_){return false;}
+}
+async function openLogWriter(){
+  if(!logState.handle)return false;
+  try{
+    if(!(await ensureWritePermission(logState.handle)))throw new Error("permission");
+    const file=await logState.handle.getFile();
+    const w=await logState.handle.createWritable({keepExistingData:true});
+    await w.seek(file.size);
+    logState.writer=w;
+    logState.failed=false;
+    return true;
+  }catch(_){
+    logState.writer=null;
+    logState.failed=true;
+    return false;
+  }
+}
+async function closeLogWriter(){
+  const w=logState.writer;
+  logState.writer=null;
+  if(w){try{await w.close();}catch(_){}}
+}
+async function flushLog(force){
+  if(logState.writing)return;
+  if(!logState.handle||logState.buffer.length===0){logStatus();return;}
+  logState.writing=true;
+  try{
+    if(!logState.writer){
+      if(!(await openLogWriter())){logStatus();return;}
+    }
+    const text=logState.buffer.join("");
+    await logState.writer.write(text);
+    logState.buffer=[];
+    logState.failed=false;
+    if(force||true){
+      // close to commit data to disk, reopen on the next batch
+      await closeLogWriter();
+    }
+  }catch(_){
+    logState.failed=true;
+    await closeLogWriter();
+  }finally{
+    logState.writing=false;
+    logStatus();
+  }
+}
+function writeLog(line,date){
+  if(!cn.logOn.checked)return;
+  const row=stamp(date,true)+"\t"+line+"\r\n";
+  logState.count++;
+  logState.memory.push(row);
+  if(logState.memory.length>100000)logState.memory.shift();
+  if(logState.handle){
+    logState.buffer.push(row);
+    if(!logState.timer){
+      logState.timer=setTimeout(function(){logState.timer=null;flushLog();},1000);
+    }
+  }
+  cn.logCount.textContent=String(logState.count);
+  if(logState.count===1||logState.count%20===0)logStatus();
+}
+cn.logBrowse.addEventListener("click",async function(){
+  if(!("showSaveFilePicker" in window)){
+    cn.logWarn.textContent="This browser has no file picker. Use Edge or Chrome.";
+    return;
+  }
+  try{
+    const handle=await window.showSaveFilePicker({
+      suggestedName:"rs232-"+stamp(new Date()).slice(0,10)+".log",
+      types:[{description:"Log file",accept:{"text/plain":[".log",".txt"]}}]
+    });
+    await closeLogWriter();
+    logState.handle=handle;
+    idbSet("logHandle",handle);
+    const header="# RS232 log, local PC time ("+Intl.DateTimeFormat().resolvedOptions().timeZone+"), started "+stamp(new Date())+"\r\n";
+    // lines held in memory (earlier failures) go first
+    logState.buffer=[];
+    try{
+      const f=await handle.getFile();
+      if(f.size===0)logState.buffer.push(header);
+    }catch(_){logState.buffer.push(header);}
+    logState.buffer=logState.buffer.concat(logState.memory.slice());
+    cn.logOn.checked=true;
+    saveSettings();
+    await flushLog(true);
+  }catch(error){
+    if(error&&error.name!=="AbortError"){
+      logState.failed=true;
+    }
+    logStatus();
+  }
+});
+cn.logOn.addEventListener("change",function(){
+  if(cn.logOn.checked&&logState.count===0)logState.memory=[];
+  logStatus();
+});
+cn.logSaveBuf.addEventListener("click",function(){
+  if(!logState.memory.length)return;
+  downloadText(logState.memory.join(""),"rs232-"+stamp(new Date()).replace(/[: ]/g,"-")+".log");
+});
+async function restoreLogHandle(){
+  const h=await idbGet("logHandle");
+  if(h&&h.kind==="file"){
+    logState.handle=h;
+    logStatus();
+  }
+}
+
+/* ---- data flow ---- */
+function handleLine(text,raw){
+  const now=new Date();
+  const shown=hexView?hexOf(raw):text;
+  addMonLine(cn.monitor,stamp(now).slice(11),shown);
+  writeLog(hexView?hexOf(raw):text,now);
+}
+
+async function connectFlow(){
+  cn.error.textContent="";
+  const item=selectedItem();
+  if(!item||connected||running)return;
+  const baud=Number(cn.baud.value);
+  if(!Number.isFinite(baud)||baud<50){
+    cn.error.textContent="Enter a valid baud rate.";
+    return;
+  }
+  const mine=++session;
+  const port=item.port;
+  setStatus("Connecting...","");
+  try{
+    await port.open({
+      baudRate:baud,
+      dataBits:Number(cn.data.value),
+      parity:cn.parity.value,
+      stopBits:Number(cn.stop.value),
+      flowControl:cn.flow.value
+    });
+  }catch(error){
+    setStatus("Disconnected","bad");
+    if(isBusyError(error)){
+      cn.error.textContent="Port is busy.";
+      const again=await askPortBusy(item);
+      if(again){
+        cn.error.textContent="";
+        return connectFlow();
+      }
+      return;
+    }
+    cn.error.textContent=(error&&error.message)||String(error);
+    return;
+  }
+  const splitter=makeSplitter(handleLine);
+  connected={item:item,port:port,reader:null,splitter:splitter,closing:false};
+  updatePort(item,"Connected",0);
+  setStatus("Connected "+portName(item)+" "+baud+" "+cn.data.value+cn.parity.value.charAt(0).toUpperCase()+cn.stop.value,"on");
+  addMonLine(cn.monitor,stamp(new Date()).slice(11),"Connected","sys");
+  saveSettings();
+  updateConnectControls();
+  readLoop(connected,mine);
+}
+
+async function readLoop(c,mine){
+  let errorText="";
+  try{
+    while(c.port.readable&&!c.closing){
+      c.reader=c.port.readable.getReader();
+      try{
+        for(;;){
+          const r=await c.reader.read();
+          if(r.done)break;
+          if(r.value&&r.value.length)c.splitter.push(r.value);
+        }
+      }finally{
+        try{c.reader.releaseLock();}catch(_){}
+        c.reader=null;
+      }
+      if(c.closing)break;
+    }
+  }catch(error){
+    errorText=(error&&error.message)||String(error);
+  }
+  c.splitter.flush();
+  if(!c.closing){
+    // unexpected end, e.g. USB unplugged
+    await finishConnection(c,errorText||"Port closed (unplugged?)");
+  }
+}
+
+async function finishConnection(c,reason){
+  if(!connected||connected!==c)return;
+  c.closing=true;
+  if(c.reader){try{await c.reader.cancel();}catch(_){}}
+  try{await c.port.close();}catch(_){}
+  connected=null;
+  updatePort(c.item,reason?"Lost: "+reason:"Disconnected",0);
+  setStatus("Disconnected",reason?"bad":"");
+  if(reason)cn.error.textContent=reason;
+  addMonLine(cn.monitor,stamp(new Date()).slice(11),reason?"Lost: "+reason:"Disconnected","sys");
+  await flushLog(true);
+  await closeLogWriter();
+  if(cn.logOn.checked&&!logState.handle&&logState.memory.length&&!("showSaveFilePicker" in window)){
+    downloadText(logState.memory.join(""),"rs232-"+stamp(new Date()).replace(/[: ]/g,"-")+".log");
+  }
+  updateConnectControls();
+}
+
+async function disconnectFlow(){
+  if(demoTimer){stopDemo();return;}
+  if(!connected)return;
+  const c=connected;
+  c.closing=true;
+  if(c.reader){try{await c.reader.cancel();}catch(_){}}
+  c.splitter.flush();
+  await finishConnection(Object.assign(c,{closing:true}),"");
+}
+cn.connect.addEventListener("click",connectFlow);
+cn.disconnect.addEventListener("click",disconnectFlow);
+
+/* ---- send ---- */
+cn.sendBtn.addEventListener("click",sendNow);
+cn.sendText.addEventListener("keydown",function(e){if(e.key==="Enter")sendNow();});
+/* ---- sent history: memory only, never saved (commands may hold secrets) ---- */
+const SENT_MAX=8;
+let sentHistory=[];
+const TERM_LABEL={crlf:"CRLF",cr:"CR",lf:"LF",tab:"Tab",none:"",custom:"Custom"};
+function renderSent(){
+  cn.sentCards.innerHTML="";
+  const has=sentHistory.length>0;
+
+  cn.sentCards.hidden=!has;
+  sentHistory.forEach(function(h){
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="sent-card";
+    b.setAttribute("role","listitem");
+    b.title="Use this command: "+h.text;
+    const cmd=document.createElement("span");
+    cmd.className="cmd";
+    cmd.textContent=h.text;
+    b.appendChild(cmd);
+    const label=TERM_LABEL[h.term];
+    if(label){
+      const tag=document.createElement("span");
+      tag.className="tag";
+      tag.textContent=label;
+      b.appendChild(tag);
+    }
+    b.addEventListener("click",function(){
+      cn.sendText.value=h.text;
+      cn.sendTerm.value=h.term;
+      cn.sendTermCustom.value=h.custom;
+      cn.sendTermCustom.hidden=h.term!=="custom";
+      sendNow();
+      saveSettings();
+      cn.sendText.focus();
+    });
+    cn.sentCards.appendChild(b);
+  });
+}
+function rememberSent(){
+  const text=cn.sendText.value;
+  if(!text)return;
+  const entry={text:text,term:cn.sendTerm.value,custom:cn.sendTermCustom.value};
+  sentHistory=sentHistory.filter(function(h){
+    return !(h.text===entry.text&&h.term===entry.term&&h.custom===entry.custom);
+  });
+  sentHistory.unshift(entry);
+  if(sentHistory.length>SENT_MAX)sentHistory.length=SENT_MAX;
+  renderSent();
+}
+
+async function sendNow(){
+  if(!connected)return;
+  const typed=parseProbe(cn.sendText.value);
+  const text=typed+termText(cn.sendTerm.value,cn.sendTermCustom);
+  if(!text)return;
+  let w=null;
+  try{
+    w=connected.port.writable.getWriter();
+    await w.write(new TextEncoder().encode(text));
+    addMonLine(cn.monitor,stamp(new Date()).slice(11),"> "+visibleResponse(text),"tx");
+    rememberSent();
+    cn.sendText.value="";
+  }catch(error){
+    cn.error.textContent=(error&&error.message)||String(error);
+  }finally{
+    if(w){try{w.releaseLock();}catch(_){}}
+  }
+}
+
+/* ---- demo ---- */
+function startDemo(){
+  if(demoTimer||connected)return;
+  let n=0;
+  const splitter=makeSplitter(handleLine);
+  demoTimer=setInterval(function(){
+    n++;
+    const line="DEMO "+pad(n,4)+" 1234567890"+String(n%7);
+    splitter.push(new TextEncoder().encode(line+"\r\n"));
+  },1000);
+  setStatus("Demo running","on");
+  addMonLine(cn.monitor,stamp(new Date()).slice(11),"Demo started","sys");
+  updateConnectControls();
+}
+async function stopDemo(){
+  if(!demoTimer)return;
+  clearInterval(demoTimer);
+  demoTimer=null;
+  setStatus("Disconnected","");
+  addMonLine(cn.monitor,stamp(new Date()).slice(11),"Demo stopped","sys");
+  await flushLog(true);
+  await closeLogWriter();
+  updateConnectControls();
+}
+cn.demo.addEventListener("click",startDemo);
+
+/* ---- use a Scan result ---- */
+function useSetting(item,attempt){
+  if(!item||!attempt)return;
+  const idx=ports.indexOf(item);
+  refreshConnectPorts();
+  if(idx>=0)cn.port.value=String(idx);
+  cn.baud.value=String(attempt.rate);
+  cn.data.value=String(attempt.frame.dataBits);
+  cn.parity.value=attempt.frame.parity;
+  cn.stop.value=String(attempt.frame.stopBits);
+  syncSegs();
+  syncLabelField();
+  saveSettings();
+  showTab("connect");
+}
+
+/* ---- segmented buttons for short selects (the select stays the source of truth) ---- */
+const segSyncs=[];
+function segSelect(sel){
+  const box=document.createElement("div");
+  box.className="seg";
+  box.setAttribute("role","group");
+  box.setAttribute("aria-label",sel.getAttribute("aria-label")||"");
+  const btns=Array.prototype.map.call(sel.options,function(o){
+    const b=document.createElement("button");
+    b.type="button";
+    b.title=o.textContent;
+    b.setAttribute("aria-label",o.textContent);
+    const icon=o.getAttribute("data-icon");
+    const short=o.hasAttribute("data-short")?o.getAttribute("data-short"):o.textContent;
+    b.innerHTML=(icon?'<svg class="i"><use href="#i-'+icon+'"/></svg>':"")+(short?"<span>"+escapeHtml(short)+"</span>":"");
+    b.addEventListener("click",function(){
+      if(sel.value===o.value)return;
+      sel.value=o.value;
+      sel.dispatchEvent(new Event("change"));
+    });
+    box.appendChild(b);
+    return b;
+  });
+  function sync(){
+    btns.forEach(function(b,i){
+      b.setAttribute("aria-pressed",String(sel.options[i].value===sel.value));
+      b.disabled=sel.disabled;
+    });
+  }
+  sel.addEventListener("change",sync);
+  new MutationObserver(sync).observe(sel,{attributes:true,attributeFilter:["disabled"]});
+  sel.after(box);
+  segSyncs.push(sync);
+  sync();
+}
+function syncSegs(){segSyncs.forEach(function(f){f();});}
+document.querySelectorAll("select[data-seg]").forEach(segSelect);
+
+function setCompat(icon,text,cls){
+  el.compatibility.innerHTML='<svg class="i"><use href="#i-'+icon+'"/></svg>';
+  el.compatibility.title=text;
+  el.compatibility.setAttribute("aria-label",text);
+  el.compatibility.classList.add(cls);
+}
+
+/* ---- boot ---- */
+if("serial" in navigator){
+  setCompat("check","Web Serial ready","success");
+  navigator.serial.addEventListener("disconnect",function(event){
+    const item=ports.find(function(candidate){return candidate.port===event.target;});
+    if(item)updatePort(item,"Disconnected",0);
+    if(connected&&connected.port===event.target){
+      finishConnection(connected,"Device unplugged");
+    }
+  });
+  // ports are never remembered: every start has an empty port list, use Add
+}else{
+  setCompat("warn","No Web Serial: use Edge or Chrome","error");
+  el.validation.textContent="Use Microsoft Edge or Chrome. If blocked, serve from localhost.";
+  cn.error.textContent="Use Microsoft Edge or Chrome.";
+}
+
+window.addEventListener("beforeunload",function(){
+  try{flushLog();}catch(_){}
+});
+
+try{
+  const old=JSON.parse(localStorage.getItem(SKEY)||"null");
+  if(old&&old.labels){delete old.labels;localStorage.setItem(SKEY,JSON.stringify(old));}
+}catch(_){}
+loadSettings();
+syncSegs();
+restoreLogHandle();
+updateEstimate();
+renderPorts();
+refreshConnectPorts();
+logStatus();
+let startTab="scan";
+try{startTab=localStorage.getItem("brs-tab")||"scan";}catch(_){}
+showTab(startTab==="connect"?"connect":"scan");
+})();
+</script>
+</body>
+</html>
